@@ -2,8 +2,12 @@
 # python
 from __future__ import unicode_literals
 import random
+import time
+import itchat
 from . import models
 from django.http import HttpResponse
+from io import BytesIO
+import base64
 # from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.conf import settings
@@ -13,8 +17,48 @@ from django.template import loader
 from blog import tasks
 from celery.result import AsyncResult
 
+# 数据分析
+import pandas as pd
+import matplotlib.pyplot as plt
+from sqlalchemy import create_engine
 
-# 在Django的views中，每一个响应都由一个函数来处理
+
+def locations(request):
+    """
+    Counting device type with pandas
+    """
+    # df = pd.read_csv('blog/ch02/cmdb_201810051456.csv')  # 该csv文件为db导出
+    # Create your engine.
+    # dialect+driver://username:password@host:port/database
+    engine = create_engine('postgresql://postgres:Hello@2018@localhost/study_db')
+    # 不从csv文件中读取DataFrame，而是将SQL数据库表读入DataFrame。
+    with engine.connect() as conn, conn.begin():
+        df = pd.read_sql_table('cmdb_ci', conn)
+    # 数据清洗
+    clean_dt = df['Location'].fillna('Missing')     # 填充缺失值(NA/NaN values)
+    clean_dt[clean_dt == ''] = 'Unknown'            # 替换空值("")
+
+    # 绘制水平条状图
+    dt_counts = clean_dt.value_counts()
+    # print(dt_counts)
+    # loc1       3
+    # loc5       1
+    # Unknown    1
+    # Name: Location, dtype: int64
+
+    # 如果不直接返给前端图片，代码应该在这里截止，并将Series对象dt_counts转化为python内置的数据格式，然后返回给前端。
+    dic = dt_counts.to_dict()
+    print dic   # {u'Unknown': 1L, u'loc1': 3L, u'loc5': 1L}
+    # 理解：dt_count[:10]: 最多取10个可能的值
+    dt_counts[:10].plot(kind='barh', rot=0, title='Location', figsize=(10, 4))
+
+    # 转成图片的步骤
+    sio = BytesIO()
+    plt.savefig(sio, format='png')
+    # 理解这里的.decode()：将str（二进制）decode解码为unicode格式，区别于base64的编解码。
+    image_data = base64.b64encode(sio.getvalue()).decode()
+    plt.close()  # 记得关闭，不然不同view画出来的图会相互影响
+    return render(request, 'blog/location.html', {'image_data': image_data})
 
 
 def index(request):
@@ -87,3 +131,18 @@ def celery_result(request):
         return HttpResponse(res.get())
     else:
         return HttpResponse(res.ready())
+
+
+def login_weixin(request):
+    uuid = itchat.get_QRuuid()
+    qrStorage = itchat.get_QR(uuid)
+    # t = time.strftime("%Y%m%d %H%M%S")
+    # response = HttpResponse(qrStorage.getvalue())
+    # response['Content-Type'] = 'image/png'
+    # response['Content-Disposition'] = 'attachment;filename="QR_%s.png"' % t
+    return HttpResponse(itchat.log)
+
+
+def send_wx_msg(request):
+    back = itchat.send_msg('Can you receive?', 'filehelper')
+    return HttpResponse(back)

@@ -60,6 +60,7 @@ coverage.xml
 *.log
 local_settings.py
 db.sqlite3
+blog/migrations/
 
 # Flask stuff:
 instance/
@@ -107,3 +108,6 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+# images
+*.png

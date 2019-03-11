@@ -13,17 +13,62 @@ class Article(models.Model):
         return self.title
 
 
+class TestBase(models.Model):
+    class Meta:
+        abstract = True
+
+    name = models.CharField(max_length=512, unique=False)
+
+
 class TestA(models.Model):
-    name = models.CharField(max_length=32, default='')
+    name = models.CharField(max_length=512, unique=False)
 
 
 class TestB(TestA):
     desc = models.CharField(max_length=32, default='')
 
 
+class TestX(TestBase):
+    desc = models.CharField(max_length=32, default='')
+
+    def __unicode__(self):
+        return self.name
+
+
 class TestC(models.Model):
     info = models.CharField(max_length=32, default='')
     test_a = models.ForeignKey('TestA', related_name='related', on_delete=models.CASCADE)
+
+
+class Blog(models.Model):
+    name = models.CharField(max_length=100)
+    tagline = models.TextField()
+
+    def __unicode__(self):
+        return self.name
+
+
+class Author(models.Model):
+    name = models.CharField(max_length=200)
+    email = models.EmailField()
+
+    def __unicode__(self):
+        return self.name
+
+
+class Entry(models.Model):
+    blog = models.ForeignKey(Blog, on_delete=models.CASCADE)
+    headline = models.CharField(max_length=255, blank=True, default='')
+    body_text = models.TextField(blank=True, default='')
+    pub_date = models.DateField(auto_now_add=True)
+    mod_date = models.DateField(auto_now=True)
+    n_comments = models.IntegerField(blank=True, default=0)
+    n_pingbacks = models.IntegerField(blank=True, default=0)
+    rating = models.IntegerField(blank=True, default=0)
+    authors = models.ManyToManyField(Author)
+
+    def __unicode__(self):
+        return self.headline
 
 
 # 有些字段类型实现时可能需要进行些调整，RAM， DISK等使用integer类型， warranty start 和 end可能更适用于datetime类型。
